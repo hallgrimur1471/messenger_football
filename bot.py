@@ -12,19 +12,16 @@ class Vector:
     y: Union[int, float] = 0
 
     def __add__(self, vector):
-        class_type = type(self)
-        return class_type(self.x + vector.x, self.y + vector.y)
+        return Vector(self.x + vector.x, self.y + vector.y)
 
     def __sub__(self, vector):
-        class_type = type(self)
-        return class_type(self.x - vector.x, self.y - vector.y)
+        return Vector(self.x - vector.x, self.y - vector.y)
 
     def __truediv__(self, value):
-        class_type = type(self)
         if (type(value) == int) or (type(value) == float):
-            return class_type(self.x / value, self.y / value)
+            return Vector(self.x / value, self.y / value)
         elif type(value) == Vector:
-            return class_type(self.x / value.x, self.y / value.y)
+            return Vector(self.x / value.x, self.y / value.y)
         else:
             raise NotImplementedError(
                 f"Unsuported divison of {type(self)} by {type(value)}."
@@ -103,7 +100,7 @@ class MovingValue:
                 identity_value = 0
             elif value_class == float:
                 identity_value = 0.0
-            elif isinstance(self._value.value, Vector):
+            elif type(self._value.value) == Vector:
                 identity_value = value_class(0, 0)
             else:
                 raise NotImplementedError(
