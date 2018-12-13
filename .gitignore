@@ -1,0 +1,9 @@
+# vim
+**/*.swp
+**/*.swo
+
+# mypy
+.mypy_cache
+
+# images
+**/*.png
