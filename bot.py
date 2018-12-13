@@ -27,7 +27,7 @@ class Vector:
                 f"Unsuported divison of {type(self)} by {type(value)}."
             )
 
-    # overridden to reduce decimal characters when printing floats
+    # overridden to reduce decimal characters when printing vectors with floats
     def __repr__(self):
         if (type(self.x) == int) and (type(self.y) == int):
             return f"{type(self).__name__}(x={self.x}, y={self.y})"
