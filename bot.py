@@ -108,17 +108,17 @@ class MovingValue:
             # https://en.wikipedia.org/wiki/Identity_element
             value_class = type(self._value.value)
             if value_class == int:
-                identity_value = 0
+                identity_element = 0
             elif value_class == float:
-                identity_value = 0.0
+                identity_element = 0.0
             elif type(self._value.value) == Vector:
-                identity_value = Vector(0, 0)
+                identity_element = Vector(0, 0)
             else:
                 raise NotImplementedError(
-                    f"Identity value of {value_class} "
+                    f"Identity element of {value_class} "
                     "for differentiation unknown"
                 )
-            return identity_value
+            return identity_element
 
         value_change = self._value.value - self._last_value.value
         time_change = self._value.time - self._last_value.time
