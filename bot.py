@@ -30,9 +30,10 @@ class Vector:
     # overridden to reduce decimal characters when printing vectors with floats
     def __repr__(self):
         if (type(self.x) == int) and (type(self.y) == int):
-            return f"{type(self).__name__}(x={self.x}, y={self.y})"
+            (x_repr, y_repr) = (str(self.x), str(self.y))
         else:
-            return f"{type(self).__name__}(x={self.x:.2f}, y={self.y:.2f})"
+            (x_repr, y_repr) = ("f{self.x:.2f}", f"{self.y:.2f}")
+        return f"{type(self).__name__}(x={x_repr}, y={y_repr})"
 
 
 class TimedValue:
