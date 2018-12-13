@@ -85,7 +85,7 @@ class MovingValue:
 
     @value.setter
     def value(self, value):
-        self._last_value = copy(self._value)  # possibly to slow
+        self._last_value = copy(self._value)
         self._value = TimedValue(value)
 
     @property
