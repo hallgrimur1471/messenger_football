@@ -42,7 +42,12 @@ class TimedValue:
     """
 
     def __init__(self, value: Any):
-        self._value = None  # arbitrary value
+        """
+        Args:
+            value (Any):
+                arbitrary value of any class
+        """
+        self._value = None
         self._value_time = None  # decimal Unix epoch time
 
         self.value = value
