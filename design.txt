@@ -1,0 +1,22 @@
+Vector:
+    x, y
+Position(Vector)
+Velocity(Vector)
+Acceleration(Vector)
+MovableObject: """Info about it's position, calculates speed and acceleration automatically"""
+    position, speed, acceleration
+    set_position() """Also updates speed and acceleration"""
+Ball(MovableObject)
+ScreenSection: """Section on your screen in pixel coordinates, (0,0) is the top left pixel"""
+    top_left, top_right, bottom_left, bottom_right, width, height
+    calculate_width()
+    calculate_height()
+AndroidScreen(ScreenSection)
+BallLocator: """Finds location of ball on screen"""
+    screen_section
+    locate_ball():
+        Returns: Position of ball
+BallSupervisor: """Updates ball location"""
+    update()
+BotEngine: "Runs the bot"
+    update()
