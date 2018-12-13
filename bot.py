@@ -69,6 +69,11 @@ class TimedValue:
 
 class MovingValue:
     def __init__(self, value: Any):
+        """
+        Args:
+            value (Any):
+                arbitrary value of any class
+        """
         self._value = None  # arbitrary value
         self._last_value = None
 
