@@ -74,7 +74,7 @@ class MovingValue:
             value (Any):
                 arbitrary value of any class
         """
-        self._value = None  # arbitrary value
+        self._value = None
         self._last_value = None
 
         self.value = value
