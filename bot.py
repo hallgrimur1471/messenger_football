@@ -106,13 +106,12 @@ class MovingValue:
             # differentiation, which is the same as the class's
             # identity element for addition (+)
             # https://en.wikipedia.org/wiki/Identity_element
-            value_class = type(self._value.value)
             if value_class == int:
                 identity_value = 0
             elif value_class == float:
                 identity_value = 0.0
             elif type(self._value.value) == Vector:
-                identity_value = value_class(0, 0)
+                identity_value = Vector(0, 0)
             else:
                 raise NotImplementedError(
                     f"Identity value of {value_class} "
