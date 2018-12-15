@@ -262,11 +262,11 @@ class MovableObject:
         self._position.vector = position_value
         self._velocity.vector = self._position.differentiated()
         self._acceleration.vector = self._velocity.differentiated()
-        print(
-            f"position: {self.position} | "
-            f"velocity: {self.velocity} | "
-            f"acceleration: {self.acceleration}"
-        )
+        # print(
+        #    f"position: {self.position} | "
+        #    f"velocity: {self.velocity} | "
+        #    f"acceleration: {self.acceleration}"
+        # )
 
     @property
     def velocity(self):
@@ -306,7 +306,7 @@ def main():
             x_step += x_initial
             y_step += y_initial
 
-    if False:
+    if True:
         print("TESTING SPEED ...")
         iterations = 1000000
         positions = map(lambda p: Vector(p, p), range(iterations))
@@ -322,6 +322,8 @@ def main():
 
         # Test results:
         # MovableObject can be moved at 80000 hz
+        # After motion vector refactor:
+        # MovableObject can be moved at 60000 hz
 
 
 if __name__ == "__main__":
