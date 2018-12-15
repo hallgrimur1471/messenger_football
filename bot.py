@@ -262,11 +262,11 @@ class MovableObject:
         self._position.vector = position_value
         self._velocity.vector = self._position.differentiated()
         self._acceleration.vector = self._velocity.differentiated()
-        # print(
-        #    f"position: {self.position} | "
-        #    f"velocity: {self.velocity} | "
-        #    f"acceleration: {self.acceleration}"
-        # )
+        print(
+            f"position: {self.position} | "
+            f"velocity: {self.velocity} | "
+            f"acceleration: {self.acceleration}"
+        )
 
     @property
     def velocity(self):
