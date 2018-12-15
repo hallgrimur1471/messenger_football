@@ -6,7 +6,7 @@ from time import time, sleep
 from copy import copy
 
 
-@dataclass
+@dataclass(order=True, frozen=True)
 class Vector:
     x: Union[int, float] = 0
     y: Union[int, float] = 0
@@ -14,14 +14,13 @@ class Vector:
     def _add(self, value):
         if self._value_is_numerical(value):
             (added_x, added_y) = (value, value)
-        elif isinstance(value, Vector):
+        elif type(value) == Vector:
             (added_x, added_y) = (value.x, value.y)
         else:
             raise NotImplementedError(
                 f"Unsuported addition of {type(self)} and {type(value)}."
             )
-        self_class = type(self)
-        return self_class(self.x + added_x, self.y + added_y)
+        return Vector(self.x + added_x, self.y + added_y)
 
     def _subtract(self, value, reverse_subtract=False):
         if reverse_subtract:
@@ -33,15 +32,36 @@ class Vector:
 
         if self._value_is_numerical(value):
             (subed_x, subed_y) = (value, value)
-        elif isinstance(value, Vector):
+        elif type(value) == Vector:
             (subed_x, subed_y) = (value.x, value.y)
         else:
             raise NotImplementedError(
                 f"Unsuported subtraction of "
                 f"{type(subtracted_value)} from {type(start_value)}"
             )
-        self_class = type(self)
-        return self_class(sub_func(self.x, subed_x), sub_func(self.y, subed_y))
+        return Vector(sub_func(self.x, subed_x), sub_func(self.y, subed_y))
+
+    def _divide(self, value):
+        if self._value_is_numerical(value):
+            (divider_x, divider_y) = (value, value)
+        elif type(value) == Vector:
+            (divider_x, divider_y) = (value.x, value.y)
+        else:
+            raise NotImplementedError(
+                f"Unsuported divison of {type(self)} by {type(value)}."
+            )
+        return Vector(self.x / divider_x, self.y / divider_y)
+
+    def _multiply(self, value):
+        if self._value_is_numerical(value):
+            (multiplier_x, multiplier_y) = (value, value)
+        elif type(value) == Vector:
+            (multiplier_x, multiplier_y) = (value.x, value.y)
+        else:
+            raise NotImplementedError(
+                f"Unsuported multiplication of {type(self)} by {type(value)}."
+            )
+        return Vector(self.x * multiplier_x, self.y * multiplier_y)
 
     def _value_is_numerical(self, value):
         return (type(value) == int) or (type(value) == float)
@@ -59,23 +79,20 @@ class Vector:
         return self._subtract(value, reverse_subtract=True)
 
     def __truediv__(self, value):
-        if self._value_is_numerical(value):
-            (divider_x, divider_y) = (value, value)
-        elif isinstance(value, Vector):
-            (divider_x, divider_y) = (value.x, value.y)
-        else:
-            raise NotImplementedError(
-                f"Unsuported divison of {type(self)} by {type(value)}."
-            )
-        self_class = type(self)
-        return self_class(self.x / divider_x, self.y / divider_y)
+        return self._divide(value)
+
+    def __mul__(self, value):
+        return self._multiply(value)
+
+    def __rmul__(self, value):
+        return self._multiply(value)
 
     # overridden to reduce decimal characters when printing vectors with floats
     def __repr__(self):
         if (type(self.x), type(self.y)) == (int, int):
             (x_repr, y_repr) = (str(self.x), str(self.y))
         else:
-            (x_repr, y_repr) = ("f{self.x:.2f}", f"{self.y:.2f}")
+            (x_repr, y_repr) = (f"{self.x:.2f}", f"{self.y:.2f}")
         return f"{type(self).__name__}(x={x_repr}, y={y_repr})"
 
 
@@ -124,7 +141,10 @@ class ChangeRecordedValue:
 
     @property
     def value(self):
-        return self._value.value
+        if self._value:
+            return self._value.value
+        else:
+            return None
 
     @value.setter
     def value(self, value):
@@ -133,15 +153,24 @@ class ChangeRecordedValue:
 
     @property
     def value_time(self):
-        return self._value.time
+        if self._value:
+            return self._value.time
+        else:
+            return None
 
     @property
     def last_value(self):
-        return self._last_value.value
+        if self._last_value:
+            return self._last_value.value
+        else:
+            return None
 
     @property
     def last_value_time(self):
-        return self._last_value.time
+        if self._last_value:
+            return self._last_value.time
+        else:
+            return None
 
     def differentiated(self):
         if (not self._last_value) or (not self._last_value.value):
@@ -169,9 +198,17 @@ class ChangeRecordedValue:
         return differentiated_value
 
 
-class Position:
-    def __init__(self, x: Union[int, float] = 0, y: Union[int, float] = 0):
+class MotionVector:
+    def __init__(self, x: Union[int, float], y: Union[int, float]):
         self._vector = ChangeRecordedValue(Vector(x, y))
+
+    @property
+    def vector(self):
+        return self._vector.value
+
+    @vector.setter
+    def vector(self, vector):
+        self._vector.value = vector
 
     @property
     def x(self):
@@ -189,37 +226,16 @@ class Position:
     def y(self, y):
         self._vector.value = Vector(self.x, y)
 
+    def differentiated(self):
+        return self._vector.differentiated()
+
     def __add__(self, value):
         self._vector.value += value
+        return self
 
     def __sub__(self, value):
         self._vector.value -= value
-
-
-def Velocity(Vector):
-    def __init__(self, x: Union[int, float] = 0, y: Union[int, float] = 0):
-        self._x = ChangeRecordedValue(x)
-        self._y = ChangeRecordedValue(y)
-
-        self.x = x
-        self.y = y
-        super().__init__(x, y)
-
-    @property  # type: ignore
-    def x(self):
-        return self._x.value
-
-    @x.setter
-    def x(self, value):
-        self._x.value = value
-
-    @property  # type: ignore
-    def y(self):
-        return self._y.value
-
-    @x.setter
-    def y(self, value):
-        self._y.value = value
+        return self
 
 
 class MovableObject:
@@ -229,34 +245,34 @@ class MovableObject:
             position (Vector):
                 position of object in arbitrary unit
         """
-        self._position = ChangeRecordedValue(position)
-        self._velocity = ChangeRecordedValue(None)  # units/sec
-        self._acceleration = ChangeRecordedValue(None)  # units/(sec**2)
+        self._position = MotionVector(position.x, position.y)
+        self._velocity = MotionVector(0, 0)  # units/sec
+        self._acceleration = MotionVector(0, 0)  # units/(sec**2)
 
         self.position = position
 
     @property
     def position(self):
-        return self._position.value
+        return self._position.vector
 
     @position.setter
     def position(self, position_value):
-        self._position.value = position_value
-        self._velocity.value = self._position.differentiated()
-        self._acceleration.value = self._velocity.differentiated()
+        self._position.vector = position_value
+        self._velocity.vector = self._position.differentiated()
+        self._acceleration.vector = self._velocity.differentiated()
         print(
-            f"position: {self._position.value} | "
-            f"velocity: {self._velocity.value} | "
-            f"acceleration: {self._acceleration.value}"
+            f"position: {self.position} | "
+            f"velocity: {self.velocity} | "
+            f"acceleration: {self.acceleration}"
         )
 
     @property
     def velocity(self):
-        return self._velocity.value
+        return self._velocity.vector
 
     @property
     def acceleration(self):
-        return self._acceleration.value
+        return self._acceleration.vector
 
 
 def main():
