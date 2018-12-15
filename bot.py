@@ -23,22 +23,24 @@ class Vector:
         return Vector(self.x + added_x, self.y + added_y)
 
     def _subtract(self, value, reverse_subtract=False):
-        if reverse_subtract:
-            sub_func = lambda x, y: y - x
-            (start_value, subtracted_value) = (value, self)
-        else:
-            sub_func = lambda x, y: x - y
-            (start_value, subtracted_value) = (self, value)
-
         if self._value_is_numerical(value):
             (subed_x, subed_y) = (value, value)
         elif type(value) == Vector:
             (subed_x, subed_y) = (value.x, value.y)
         else:
+            if reverse_subtract:
+                (start_value, subtracted_value) = (value, self)
+            else:
+                (start_value, subtracted_value) = (self, value)
             raise NotImplementedError(
                 f"Unsuported subtraction of "
                 f"{type(subtracted_value)} from {type(start_value)}"
             )
+
+        if reverse_subtract:
+            sub_func = lambda x, y: y - x
+        else:
+            sub_func = lambda x, y: x - y
         return Vector(sub_func(self.x, subed_x), sub_func(self.y, subed_y))
 
     def _divide(self, value):
