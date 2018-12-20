@@ -384,20 +384,20 @@ class BotEngine:
         self._frame_time_delta = None
 
         self._ball = None
-        self._ball_locator = None
-
-    def start(self):
         android_screen = ScreenSection(
             Vector(70, 52), Vector(842, 52), Vector(70, 1080), Vector(842, 1080)
         )
         self._ball_locator = BallLocatorWithMockImages(android_screen)
 
+    def start(self):
         num_iterations = 2
+
         start_time = time()
         for _ in range(num_iterations):
             current_time = time()
             self._iterate(current_time)
         end_time = time()
+
         duration = end_time - start_time
         print(f"BotEngine $ iterations/sec: {num_iterations/duration:.2f}")
 
