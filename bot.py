@@ -420,7 +420,6 @@ class BotEngine:
             self._ball = MovableObject(ball_location)
         else:
             self._ball.position = ball_location
-        # print(f"ball_location: {ball_location}")
         print(f"ball $ {self._ball}")
 
 
