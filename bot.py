@@ -1,9 +1,18 @@
 #!/usr/bin/env python3.7
 
+# Standard Library
 from dataclasses import dataclass, field
 from typing import Union, Any
 from time import time, sleep
 from copy import copy
+from os.path import dirname, abspath, join
+
+# PyPi
+from pymouse import PyMouse
+from PIL import Image
+import mss
+
+# print(PIL.__file__)
 
 
 @dataclass(order=True, frozen=True)
@@ -277,6 +286,35 @@ class MovableObject:
         return self._acceleration.vector
 
 
+@dataclass
+class ScreenSection:
+    top_left: Vector  # (70, 52)
+    top_right: Vector  # (842, 52)
+    bottom_left: Vector  # (70, 1080)
+    bottom_right: Vector  # (842, 1080)
+
+    @property
+    def width(self):
+        return (self.top_right - self.top_left).x
+
+    @property
+    def height(self):
+        return (self.bottom_left - self.top_left).y
+
+    @property
+    def mss_compatible_format(self):
+        """
+        converts this screen section to a dict() format
+        that the mss module can understand
+        """
+        return {
+            "left": self.top_left.x,
+            "top": self.top_left.y,
+            "width": self.width,
+            "height": self.height,
+        }
+
+
 def main():
     p = Vector(15, 15)
     atom = MovableObject(p)
@@ -306,7 +344,7 @@ def main():
             x_step += x_initial
             y_step += y_initial
 
-    if True:
+    if False:
         print("TESTING SPEED ...")
         iterations = 1000000
         positions = map(lambda p: Vector(p, p), range(iterations))
@@ -326,5 +364,43 @@ def main():
         # MovableObject can be moved at 60000 hz
 
 
+def test():
+    m = PyMouse()
+    while True:
+        print(m.position())
+        sleep(8)
+
+
+def grab_image(screen_section: ScreenSection, screen_control):
+    screenshot = screen_control.grab(screen_section.mss_compatible_format)
+    image = Image.frombytes(
+        "RGB", screenshot.size, screenshot.bgra, "raw", "BGRX"
+    )
+    return image
+
+
+def record():
+    android_screen = ScreenSection(
+        Vector(70, 52), Vector(842, 52), Vector(70, 1080), Vector(842, 1080)
+    )
+    num_frames = 8000
+    fps = 20
+    frame_calculation_time = 0.04
+    wait_time = (1.0 / fps) - frame_calculation_time
+    print("wait_time:", wait_time)
+    project_directory = dirname(abspath(__file__))
+
+    with mss.mss() as screen_control:
+        start_time = time()
+        for i in range(num_frames):
+            image = grab_image(android_screen, screen_control)
+            img_path = join(project_directory, f"recorded_frames/image{i}.png")
+            image.save(img_path)
+            sleep(wait_time)
+        end_time = time()
+        duration = end_time - start_time
+        print(f"actual fps: {num_frames/duration}")
+
+
 if __name__ == "__main__":
-    main()
+    record()

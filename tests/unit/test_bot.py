@@ -143,3 +143,15 @@ class TestMovableObject:
             assert almost_equal(atom.acceleration, b.Vector(8, 8), 0.001)
 
             step_vector += acceleration
+
+
+class TestScreenSection:
+    def test(self):
+        screen_section = b.ScreenSection(
+            b.Vector(70, 52),
+            b.Vector(842, 52),
+            b.Vector(70, 1080),
+            b.Vector(842, 1080),
+        )
+        assert screen_section.width == 842 - 70
+        assert screen_section.height == 1080 - 52
