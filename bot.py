@@ -2,17 +2,21 @@
 
 # Standard Library
 from dataclasses import dataclass, field
-from typing import Union, Any
+from typing import Union, Any, List
 from time import time, sleep
 from copy import copy
+import os
+import re
 from os.path import dirname, abspath, join
 
 # PyPi
 from pymouse import PyMouse
 from PIL import Image
 import mss
+import numpy as np
 
-# print(PIL.__file__)
+# dt = np.dtype("u8")
+# print(dt.name)
 
 
 @dataclass(order=True, frozen=True)
@@ -271,11 +275,6 @@ class MovableObject:
         self._position.vector = position_value
         self._velocity.vector = self._position.differentiated()
         self._acceleration.vector = self._velocity.differentiated()
-        print(
-            f"position: {self.position} | "
-            f"velocity: {self.velocity} | "
-            f"acceleration: {self.acceleration}"
-        )
 
     @property
     def velocity(self):
@@ -284,6 +283,13 @@ class MovableObject:
     @property
     def acceleration(self):
         return self._acceleration.vector
+
+    def __repr__(self):
+        return (
+            f"position: {self.position} | "
+            f"velocity: {self.velocity} | "
+            f"acceleration: {self.acceleration}"
+        )
 
 
 @dataclass
@@ -315,7 +321,115 @@ class ScreenSection:
         }
 
 
+class BallLocator:
+    def __init__(self, screen_section: ScreenSection):
+        self._screen_section = screen_section
+        self._screen_control = mss.mss()
+        self._sum_matrix = np.zeros((1000, 1000), np.uint64)
+
+    def locate_ball(self):
+        screen_image = self._grab_image(self._screen_section)
+        x = self._screen_section.top_left.x + (self._screen_section.width / 2)
+        y = self._screen_section.top_left.y + (self._screen_section.height / 2)
+        return Vector(x, y)
+
+    def _grab_image(self, screen_section):
+        screenshot = self._screen_control.grab(
+            screen_section.mss_compatible_format
+        )
+        image = Image.frombytes(
+            "RGB", screenshot.size, screenshot.bgra, "raw", "BGRX"
+        )
+        return image
+
+
+class BallLocatorWithMockImages(BallLocator):
+    def __init__(self, screen_section: ScreenSection):
+        super().__init__(screen_section)
+
+        self._mock_images = []  # type: List[Image]
+        project_root = dirname(abspath(__file__))
+        self._mock_image_directory = join(project_root, "recorded_frames")
+        self._read_all_images_to_memory()
+
+    def _comparison_key(self, image_path):
+        results = re.match("^.+[^0-9]+([0-9]+)\.png$", image_path)
+        image_number = int(results[1])
+        return image_number
+
+    def _read_all_images_to_memory(self):
+        print("reading mock images to memory ...")
+        images = os.listdir(self._mock_image_directory)
+        images = list(
+            map(lambda img: join(self._mock_image_directory, img), images)
+        )
+        images.sort(key=self._comparison_key, reverse=True)
+        for i, image_path in enumerate(images):
+            image = Image.open(image_path)
+            image.load()
+            images[i] = image
+        self._mock_images = images
+
+    def _grab_image(self, screen_section):
+        try:
+            image = self._mock_images.pop()
+        except IndexError:
+            raise IndexError("BallLocatorWithMockImages is out of mock images")
+        return image
+
+
+class BotEngine:
+    def __init__(self):
+        self._frame_time = None
+        self._frame_time_delta = None
+
+        self._ball = None
+        self._ball_locator = None
+
+    def start(self):
+        android_screen = ScreenSection(
+            Vector(70, 52), Vector(842, 52), Vector(70, 1080), Vector(842, 1080)
+        )
+        self._ball_locator = BallLocatorWithMockImages(android_screen)
+
+        num_iterations = 2
+        start_time = time()
+        for _ in range(num_iterations):
+            current_time = time()
+            self._iterate(current_time)
+        end_time = time()
+        duration = end_time - start_time
+        print(f"BotEngine $ iterations/sec: {num_iterations/duration:.2f}")
+
+    def _iterate(self, frame_time):
+        self._update_clocks(frame_time)
+        self._iterate_core(self._frame_time_delta)
+        sleep(0.049)  # TODO: remove
+
+    def _update_clocks(self, frame_time):
+        if not self._frame_time:
+            self._frame_time_delta = 0
+        else:
+            self._frame_time_delta = frame_time - self._frame_time
+        self._frame_time = frame_time
+
+    def _iterate_core(self, dt: float):
+        print("frame delta time:", dt)
+        ball_location = self._ball_locator.locate_ball()
+        if not self._ball:
+            self._ball = MovableObject(ball_location)
+        else:
+            self._ball.position = ball_location
+        # print(f"ball_location: {ball_location}")
+        print(f"ball $ {self._ball}")
+
+
 def main():
+    bot = BotEngine()
+    bot.start()
+
+
+def test():
     p = Vector(15, 15)
     atom = MovableObject(p)
     test_iterations = 10
@@ -364,7 +478,7 @@ def main():
         # MovableObject can be moved at 60000 hz
 
 
-def test():
+def measure_screen():
     m = PyMouse()
     while True:
         print(m.position())
@@ -383,7 +497,7 @@ def record():
     android_screen = ScreenSection(
         Vector(70, 52), Vector(842, 52), Vector(70, 1080), Vector(842, 1080)
     )
-    num_frames = 8000
+    num_frames = 500
     fps = 20
     frame_calculation_time = 0.04
     wait_time = (1.0 / fps) - frame_calculation_time
@@ -403,4 +517,4 @@ def record():
 
 
 if __name__ == "__main__":
-    record()
+    main()
