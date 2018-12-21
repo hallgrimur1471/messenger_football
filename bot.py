@@ -5,15 +5,18 @@ from dataclasses import dataclass, field
 from typing import Union, Any, List
 from time import time, sleep
 from copy import copy
-import os
 import re
+import os
 from os.path import dirname, abspath, join
+from collections import deque
+from statistics import mean
 
 # PyPi
 from pymouse import PyMouse
 from PIL import Image
 import mss
 import numpy as np
+import matplotlib.pyplot as plt
 
 # dt = np.dtype("u8")
 # print(dt.name)
@@ -325,13 +328,39 @@ class BallLocator:
     def __init__(self, screen_section: ScreenSection):
         self._screen_section = screen_section
         self._screen_control = mss.mss()
-        self._sum_matrix = np.zeros((1000, 1000), np.uint64)
+        self._scale_down_factor = (1, 1)
+        self._sum_matrix = np.zeros(
+            (screen_section.height, screen_section.width), np.uint64
+        )
 
     def locate_ball(self):
         screen_image = self._grab_image(self._screen_section)
+        self._fill_sum_matrix(screen_image)
         x = self._screen_section.top_left.x + (self._screen_section.width / 2)
         y = self._screen_section.top_left.y + (self._screen_section.height / 2)
         return Vector(x, y)
+
+    def _fill_sum_matrix(self, image):
+        (scale_down_x, scale_down_y) = self._scale_down_factor
+        for x in range(height):
+            for j in range(width):
+                print(i, j)
+                pixel = image.getpixel((i, j))
+                pixel_intensity = self._calculate_pixel_intensity(pixel)
+
+                self._sum_matrix[i, j] = pixel_intensity
+                if i > 0:
+                    self._sum_matrix[i, j] += self._sum_matrix[i - 1, j]
+                if j > 0:
+                    self._sum_matrix[i, j] += self._sum_matrix[i, j - 1]
+                if (i > 0) and (j > 0):
+                    self._sum_matrix[i, j] -= self._sum_matrix[i - 1, j - 1]
+
+    def _calculate_pixel_intensity(self, pixel):
+        mean_value = int(mean(pixel))
+        reversed_ = abs(mean_value - 255)
+        intensity = float(reversed_) / 255
+        return intensity
 
     def _grab_image(self, screen_section):
         screenshot = self._screen_control.grab(
@@ -360,14 +389,16 @@ class BallLocatorWithMockImages(BallLocator):
     def _read_all_images_to_memory(self):
         print("reading mock images to memory ...")
         images = os.listdir(self._mock_image_directory)
+        images = filter(lambda img: os.path.splitext(img)[1] == ".png", images)
         images = list(
             map(lambda img: join(self._mock_image_directory, img), images)
         )
         images.sort(key=self._comparison_key, reverse=True)
         for i, image_path in enumerate(images):
-            image = Image.open(image_path)
-            image.load()
-            images[i] = image
+            if i > 320:  # TODO: remove
+                image = Image.open(image_path)
+                image.load()
+                images[i] = image
         self._mock_images = images
 
     def _grab_image(self, screen_section):
@@ -380,6 +411,7 @@ class BallLocatorWithMockImages(BallLocator):
 
 class BotEngine:
     def __init__(self):
+        self._iterations_per_second = 27
         self._frame_time = None
         self._frame_time_delta = None
 
@@ -390,21 +422,29 @@ class BotEngine:
         self._ball_locator = BallLocatorWithMockImages(android_screen)
 
     def start(self):
-        num_iterations = 2
+        iterations_completed = 0
+        number_of_iterations_to_complete = 2
+        current_time = time()
+        next_iteration_time = current_time
 
         start_time = time()
-        for _ in range(num_iterations):
+        while iterations_completed < number_of_iterations_to_complete:
             current_time = time()
-            self._iterate(current_time)
+            if current_time >= next_iteration_time:
+                self._iterate(current_time)
+                next_iteration_time += 1.0 / self._iterations_per_second
+                iterations_completed += 1
         end_time = time()
 
         duration = end_time - start_time
-        print(f"BotEngine $ iterations/sec: {num_iterations/duration:.2f}")
+        print(
+            f"BotEngine $ iterations/sec: "
+            f"{number_of_iterations_to_complete/duration:.2f}"
+        )
 
     def _iterate(self, frame_time):
         self._update_clocks(frame_time)
         self._iterate_core(self._frame_time_delta)
-        sleep(0.049)  # TODO: remove
 
     def _update_clocks(self, frame_time):
         if not self._frame_time:
@@ -414,13 +454,13 @@ class BotEngine:
         self._frame_time = frame_time
 
     def _iterate_core(self, dt: float):
-        print("frame delta time:", dt)
+        # print("frame delta time:", dt)
         ball_location = self._ball_locator.locate_ball()
         if not self._ball:
             self._ball = MovableObject(ball_location)
         else:
             self._ball.position = ball_location
-        print(f"ball $ {self._ball}")
+        # print(f"ball $ {self._ball}")
 
 
 def main():
@@ -486,33 +526,80 @@ def measure_screen():
 
 def grab_image(screen_section: ScreenSection, screen_control):
     screenshot = screen_control.grab(screen_section.mss_compatible_format)
+    screenshot_time = time()
     image = Image.frombytes(
         "RGB", screenshot.size, screenshot.bgra, "raw", "BGRX"
     )
-    return image
+    return (image, screenshot_time)
 
 
 def record():
     android_screen = ScreenSection(
         Vector(70, 52), Vector(842, 52), Vector(70, 1080), Vector(842, 1080)
     )
-    num_frames = 500
-    fps = 20
-    frame_calculation_time = 0.04
-    wait_time = (1.0 / fps) - frame_calculation_time
-    print("wait_time:", wait_time)
+    num_frames = 3000
+    fps = 27
     project_directory = dirname(abspath(__file__))
 
+    print("count down:")
+    for i in reversed(range(3)):
+        print(i + 1)
+        sleep(1)
+
+    print("recording frames to memory ...")
+    images = deque()
     with mss.mss() as screen_control:
+        current_time = time()
+        next_screenshot_time = current_time
         start_time = time()
-        for i in range(num_frames):
-            image = grab_image(android_screen, screen_control)
-            img_path = join(project_directory, f"recorded_frames/image{i}.png")
-            image.save(img_path)
-            sleep(wait_time)
+        while len(images) < num_frames:
+            current_time = time()
+            if current_time >= next_screenshot_time:
+                (image, image_time) = grab_image(android_screen, screen_control)
+                images.appendleft((image, image_time))
+                next_screenshot_time += 1.0 / fps
         end_time = time()
         duration = end_time - start_time
         print(f"actual fps: {num_frames/duration}")
+
+    print("writing images to disk ...")
+    image_time_log = join(project_directory, "recorded_frames/image_times.log")
+    with open(image_time_log, "w") as time_log:
+        for i in range(num_frames):
+            img_path = join(project_directory, f"recorded_frames/image{i}.png")
+            (image, image_time) = images.pop()
+            image.save(img_path)
+            time_log.write(f"{image_time}\n")
+
+    print("done")
+
+
+def analyze_time_log():
+    project_directory = dirname(abspath(__file__))
+    image_time_log = join(project_directory, "recorded_frames/image_times.log")
+    with open(image_time_log, "r") as time_log:
+        times = time_log.readlines()
+    times = list(map(lambda t: float(t), times))
+    diffs = []
+    for i in range(len(times)):
+        if i == 0:
+            continue
+        diffs.append(times[i] - times[i - 1])
+
+    fig, ax = plt.subplots()
+    ax.plot(times[1:], diffs, "-", label="Time difference between frames")
+    # plt.show()
+    print(type(times))
+    print(len(times))
+    print(min(diffs))
+    print(mean(diffs))
+    print(max(diffs))
+    print(max(times))
+    print(min(times))
+    duration = max(times) - min(times)
+    print(f"time log fps: {len(times)/duration}")
+
+    # results: VM is running android at 27 fps
 
 
 if __name__ == "__main__":
